@@ -19,6 +19,12 @@ namespace SecureLoginApi.Services
         //      läggs till varje lösenord innan det hashas
         public User Register(string username, string password)
         {
+            // VG-krav: kolla om användaren redan finns innan vi sparar (OWASP A07)
+            if (_userRepository.Exists(username))
+            {
+                throw new InvalidOperationException("Användarnamnet finns redan");
+            }
+
             var passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
 
             var user = new User

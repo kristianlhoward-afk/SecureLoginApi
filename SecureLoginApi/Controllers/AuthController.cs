@@ -25,9 +25,19 @@ namespace SecureLoginApi.Controllers
         [HttpPost("register")]
         public IActionResult Register([FromBody] RegisterRequest request)
         {
-            // AuthService hanterar BCrypt-hashning - lösenordet hashas innan det sparas
-            var user = _authService.Register(request.Username, request.Password);
-            return Ok(new { message = "Användare registrerad", username = user.Username });
+            try
+            {
+                // AuthService hanterar BCrypt-hashning - lösenordet hashas innan det sparas
+                // AuthService kastar InvalidOperationException om användaren redan finns (VG-krav)
+                var user = _authService.Register(request.Username, request.Password);
+                return Ok(new { message = "Användare registrerad", username = user.Username });
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Fångar dubblettfel och returnerar 409 Conflict istället för att krascha
+                _logger.LogWarning("Registreringsförsök med redan existerande användare: {Username}", request.Username);
+                return Conflict(new { message = ex.Message });
+            }
         }
 
         [HttpPost("login")]
