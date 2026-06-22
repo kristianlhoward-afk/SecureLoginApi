@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using SecureLoginApi.Models;
 using SecureLoginApi.DTOs;
-using SecureLoginApi.Repositories;
+using SecureLoginApi.Services;
 
 namespace SecureLoginApi.Controllers
 {
@@ -9,38 +8,39 @@ namespace SecureLoginApi.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        // Repository injiceras via konstruktorn (Dependency Injection)
-        // Controller känner bara till interfacet IUserRepository - inte vilken implementation som körs
-        private readonly IUserRepository _userRepository;
+        // AuthService injiceras via konstruktorn (Dependency Injection)
+        // Controller känner bara till AuthService - ingen logik här, bara ta emot och skicka vidare
+        // Om byte vid implementation av AuthService behövs inte Controller-koden röras
+        private readonly AuthService _authService;
 
-        public AuthController(IUserRepository userRepository)
+        // ILogger är inbyggd i .NET - loggar misslyckade inloggningsförsök (OWASP A09)
+        private readonly ILogger<AuthController> _logger;
+
+        public AuthController(AuthService authService, ILogger<AuthController> logger)
         {
-            _userRepository = userRepository;
+            _authService = authService;
+            _logger = logger;
         }
 
         [HttpPost("register")]
         public IActionResult Register([FromBody] RegisterRequest request)
         {
-            // OBS: ingen BCrypt eller dubblettkontroll än
-            var user = new User
-            {
-                Username = request.Username,
-                PasswordHash = request.Password // TILLFÄLLIGT - sparas i klartext just nu!
-            };
-
-            _userRepository.Add(user);
-
+            // AuthService hanterar BCrypt-hashning - lösenordet hashas innan det sparas
+            var user = _authService.Register(request.Username, request.Password);
             return Ok(new { message = "Användare registrerad", username = user.Username });
         }
 
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
-            var user = _userRepository.GetByUsername(request.Username);
+            // AuthService verifierar lösenordet mot BCrypt-hashen i databasen
+            var user = _authService.Login(request.Username, request.Password);
 
-            // OBS: ingen BCrypt-jämförelse än - bara enkel strängjämförelse just nu
-            if (user == null || user.PasswordHash != request.Password)
+            if (user == null)
             {
+                // Generiskt felmeddelande - avslöjar inte om det var username eller password som var fel (OWASP A07)
+                // Loggar misslyckade försök för övervakning (OWASP A09)
+                _logger.LogWarning("Misslyckat inloggningsförsök för användare: {Username}", request.Username);
                 return Unauthorized(new { message = "Fel användarnamn eller lösenord" });
             }
 
