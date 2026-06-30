@@ -35,7 +35,6 @@ namespace SecureLoginApi
                     opt.Window = TimeSpan.FromMinutes(1);
                     opt.QueueLimit = 0;
                 });
-
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             });
 
@@ -45,11 +44,9 @@ namespace SecureLoginApi
 
             var app = builder.Build();
 
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
+            // Swagger tillgängligt i alla miljöer - för att möjliggöra testning av deployad version
+            app.UseSwagger();
+            app.UseSwaggerUI();
 
             app.UseHttpsRedirection();
             app.UseAuthorization();
