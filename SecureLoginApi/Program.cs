@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using SecureLoginApi.Data;
 using SecureLoginApi.Repositories;
 using SecureLoginApi.Services;
 
@@ -9,11 +11,16 @@ namespace SecureLoginApi
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Registrera repositories och services i DI-containern
-            // AddSingleton = samma instans lever hela appens livstid (krävs för InMemory-lagring)
-            builder.Services.AddSingleton<IUserRepository, InMemoryUserRepository>();
+            // Connection string hämtas från user-secrets (lokalt) eller miljövariabler (produktion)
+            // Sparas ALDRIG i kod eller appsettings.json - skyddar mot läckta databasuppgifter (OWASP A05)
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-            // AddScoped = ny instans per request (standard för services)
+            builder.Services.AddDbContext<AppDbContext>(options =>
+                options.UseSqlServer(connectionString));
+
+            // Registrera repositories och services i DI-containern
+            // AddScoped = ny instans per request - rätt mönster för databas-kopplingar
+            builder.Services.AddScoped<IUserRepository, SqlUserRepository>();
             builder.Services.AddScoped<AuthService>();
 
             builder.Services.AddControllers();
