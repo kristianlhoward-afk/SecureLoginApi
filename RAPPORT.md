@@ -1,5 +1,10 @@
 # Teknisk rapport – De viktigaste säkerhetsvalen i inlämningsuppgift för inloggnings-/registreringssida (SecureLoginApi)
 
+## Live demo
+
+API:t är deployat till Azure App Service och kan testas live via Swagger:
+https://secureloginapi-b9fyfqafacg2decx.swedencentral-01.azurewebsites.net/swagger
+
 ## Hur skyddas användarnas lösenord?
 
 Lösenord hashas med **BCrypt** (`BCrypt.Net-Next`) innan de sparas i databasen (**OWASP A02**). BCrypt genererar automatiskt ett unikt, slumpmässigt **salt** per lösenord (**OWASP A02**), vilket gör att samma lösenord aldrig ger samma hash två gånger. Det skyddar mot rainbow table-attacker. BCrypt är dessutom medvetet långsam, vilket gör brute force-attacker opraktiska. Lösenord i klartext sparas aldrig, varken i databasen eller i loggar.
@@ -14,14 +19,14 @@ Vid misslyckad inloggning – oavsett om det är användarnamnet eller lösenord
 
 ## Vilka sårbarheter (OWASP Top 10) har undvikits?
 
-| Kategori | Åtgärd |
-|---|---|
-| **A02 – Cryptographic Failures** | Lösenord hashas med BCrypt och unikt salt, sparas aldrig i klartext |
-| **A03 – Injection** | EF Core genererar parametriserade SQL-frågor automatiskt, vilket skyddar mot SQL injection |
-| **A05 – Security Misconfiguration** | Connection string till Azure SQL hanteras via `dotnet user-secrets` lokalt, sparas aldrig i kod eller Git |
-| **A06 – Vulnerable Components** | `dotnet list package --vulnerable` bekräftar att inga använda NuGet-paket har kända sårbarheter |
-| **A07 – Authentication Failures** | Dubblettkontroll vid registrering, generiska felmeddelanden vid inloggning, samt rate limiting (max 5 inloggningsförsök/minut) mot brute force |
-| **A09 – Logging Failures** | Misslyckade inloggningsförsök loggas via `ILogger` |
+| Kategori | Åtgärd | ISO 27001/27002 |
+|---|---|---|
+| **A02 – Cryptographic Failures** | Lösenord hashas med BCrypt och unikt salt, sparas aldrig i klartext | Cryptography |
+| **A03 – Injection** | EF Core genererar parametriserade SQL-frågor automatiskt, vilket skyddar mot SQL injection | Secure Coding |
+| **A05 – Security Misconfiguration** | Connection string till Azure SQL hanteras via `dotnet user-secrets` lokalt, sparas aldrig i kod eller Git | Data Leakage Prevention |
+| **A06 – Vulnerable Components** | `dotnet list package --vulnerable` bekräftar att inga använda NuGet-paket har kända sårbarheter | Vulnerability Management |
+| **A07 – Authentication Failures** | Dubblettkontroll vid registrering, generiska felmeddelanden vid inloggning, samt rate limiting (max 5 inloggningsförsök/minut) mot brute force | Authentication |
+| **A09 – Logging Failures** | Misslyckade inloggningsförsök loggas via `ILogger` | Logging and Monitoring |
 
 ### Delvis uppfyllda sårbarheter enligt OWASP Top 10
 
@@ -37,8 +42,8 @@ Vid misslyckad inloggning – oavsett om det är användarnamnet eller lösenord
 | **A08 – Data Integrity Failures** | Applikationen varken deserialiserar opålitlig data eller hanterar automatiska uppdateringar |
 | **A10 – Server-Side Request Forgery** | API:t gör inga externa anrop baserat på användarinput |
 
-## Säkerhetsstandard och arkitektur
+## Arkitektur
 
-Principer från ISO 27002 används kring kryptografi och åtkomstkontroll. Arkitekturen bygger på separation of concerns genom lagerindelning med Dependency Injection och är uppbyggd med utbytbara komponenter via `IUserRepository`, vilket gjorde det möjligt att gå från minneshanterad lagring till databaslagring i Azure SQL.
+Arkitekturen bygger på separation of concerns genom lagerindelning med Dependency Injection och är uppbyggd med utbytbara komponenter via `IUserRepository`, vilket gjorde det möjligt att gå från minneshanterad lagring till databaslagring i Azure SQL.
 
-Koden är genomgående kommenterad i större utsträckning än vad som normalt görs i produktionskod. Det är ett medvetet val eftersom detta är ett skolarbete där resonemanget bakom varje säkerhetsval ska kunna följas i koden – i ett verkligt projekt hade kommentarerna varit betydligt mer sparsamma i main/master.
+Koden är genomgående kommenterad i större utsträckning än vad som normalt görs i produktionskod. Det är ett medvetet val eftersom detta är ett skolarbete där koden förklaras mer detaljerat – i ett verkligt projekt hade kommentarerna varit betydligt mer sparsamma i main/master.
